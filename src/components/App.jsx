@@ -28,49 +28,51 @@ export const App = () => {
     setError(null);
   };
 
-  const axiosGetImages = async (changedSearch, currentPage) => {
 
-    if (abortController.current) { abortController.current.abort(); };
-    abortController.current = new AbortController();
-
-    setisLoading(true);
-    try {
-      const { data } = await getItems(changedSearch, currentPage, abortController.current);
-
-      const { hits, totalHits } = data;
-
-      currentPage < Math.ceil(totalHits / 12)
-        ? setShowButton(true)
-        : setShowButton(false);
-      currentPage === 1
-        ? setImages(hits)
-        : setImages(previosState => [...previosState, ...hits]);
-
-      if (!hits.length) {
-        setError(`Зображення ${search} відсутні`);
-        return;
-      };
-
-    }
-    catch (error) {
-      setError(error.message);
-    }
-    finally {
-      setisLoading(false);
-    }
-
-    return () => {
-      if (abortController.current) {
-        abortController.current.abort();
-      }
-    };
-  };
 
   // Робить пошуковий запит на сервер, дозавантажує наступні фото
   useEffect(() => {
     if (!search) { return; };
+
+    const axiosGetImages = async (changedSearch, currentPage) => {
+
+      if (abortController.current) { abortController.current.abort(); };
+      abortController.current = new AbortController();
+
+      setisLoading(true);
+      try {
+        const { data } = await getItems(changedSearch, currentPage, abortController.current);
+
+        const { hits, totalHits } = data;
+
+        currentPage < Math.ceil(totalHits / 12)
+          ? setShowButton(true)
+          : setShowButton(false);
+        currentPage === 1
+          ? setImages(hits)
+          : setImages(previosState => [...previosState, ...hits]);
+
+        if (!hits.length) {
+          setError(`Зображення ${search} відсутні`);
+          return;
+        };
+
+      }
+      catch (error) {
+        setError(error.message);
+      }
+      finally {
+        setisLoading(false);
+      }
+
+      return () => {
+        if (abortController.current) {
+          abortController.current.abort();
+        }
+      };
+    };
     axiosGetImages(search, page);
-  }, [search, page,]);
+  }, [search, page]);
 
 
   // Завантаження додаткових фото
