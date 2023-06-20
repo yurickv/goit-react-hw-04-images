@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Searchbar } from './Searchbar/Searchbar'
 import { Loader } from './Loader/LoaderSpiner'
 import { getItems } from './Api/Api'
@@ -6,123 +6,114 @@ import { ImageGallery } from './ImageGallery/ImageGallery'
 import { Button } from './LoadMoreBtn/LoadMoreBtn'
 import Modal from './Modal/ModalWindow'
 
-export class App extends Component {
-  state = {
-    images: [],
-    search: '',
-    page: 1,
-    status: 'idle',
-    error: null,
-    showButton: false,
-    showModal: false,
-    bigImage: null,
-  }
+export const App = () => {
+
+  const [images, setImages] = useState([]);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [showButton, setShowButton] = useState(false);
+  const [error, setError] = useState(null);
+  const [isLoading, setisLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [bigImage, setBigImage] = useState(null);
+
+  const abortController = useRef(null);
 
   // Записує значення пошуку в state.search
-  handleSubmit = ({ search }) => {
-    this.setState({
-      search,
-      page: 1,
-      images: [],
-      showButton: false,
-      error: null,
-    });
-  }
+  const handleSubmit = (newSearch) => {
+    setSearch(newSearch.search);
+    setPage(1);
+    setImages([]);
+    setShowButton(false);
+    setError(null);
+  };
 
-  // Робить пошуковий запит на сервер, дозавантажує наступні фото
-  componentDidUpdate(_, prevState) {
-    const { search, page, } = this.state;
+  const axiosGetImages = async (changedSearch, currentPage) => {
 
-    if (prevState.page !== page || prevState.search !== search) {
-      if (prevState.search !== search) { this.setState({ status: 'pending' }); }
+    if (abortController.current) { abortController.current.abort(); };
+    abortController.current = new AbortController();
 
-      this.axiosGetImages(search, page);
-    }
-  }
-
-  axiosGetImages = async (search, page) => {
-
+    setisLoading(true);
     try {
-      const { data } = await getItems(search, page);
+      const { data } = await getItems(changedSearch, currentPage, abortController.current);
 
       const { hits, totalHits } = data;
 
-      if (!hits.length) {
-        this.setState({
-          error: `Зображення ${search} відсутні`,
-          status: 'rejected',
-        });
-        console.log(this.state.status)
-        return;
-      }
+      currentPage < Math.ceil(totalHits / 12)
+        ? setShowButton(true)
+        : setShowButton(false);
+      currentPage === 1
+        ? setImages(hits)
+        : setImages(previosState => [...previosState, ...hits]);
 
-      this.setState(prevState => ({
-        images: [...prevState.images, ...hits],
-        showButton: this.state.page < Math.ceil(totalHits / 12),
-        status: 'resolved',
-      }));
-    } catch (error) {
-      this.setState({ error: error.message });
+      if (!hits.length) {
+        setError(`Зображення ${search} відсутні`);
+        return;
+      };
+
     }
+    catch (error) {
+      setError(error.message);
+    }
+    finally {
+      setisLoading(false);
+    }
+
+    return () => {
+      if (abortController.current) {
+        abortController.current.abort();
+      }
+    };
   };
 
-  componentWillUnmount() {
-    this.setState({ status: 'idle' });
-  }
+  // Робить пошуковий запит на сервер, дозавантажує наступні фото
+  useEffect(() => {
+    if (!search) { return; };
+    axiosGetImages(search, page);
+  }, [search, page,]);
 
 
   // Завантаження додаткових фото
-  addPage = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
-
+  const addPage = () => {
+    setPage(prevState => prevState + 1);
   };
 
   // Відкриття модального вікна
-  openModal = event => {
-    this.setState({ bigImage: event, showModal: true });
+  const openModal = event => {
+    setBigImage(event);
+    setShowModal(true);
     document.body.style.overflow = 'hidden';
   };
 
   // Закриття модального вікна
-  closeModal = () => {
-    this.setState({ bigImage: null, showModal: false });
+  const closeModal = () => {
+    setBigImage(null);
+    setShowModal(false);
     document.body.style.overflow = 'auto';
   };
 
+  return (
+    <>
+      <Searchbar onSearch={handleSubmit} />
+      {images.length > 0 && (<ImageGallery pictures={images} onOpenModal={openModal} />)}
+      {isLoading && <Loader />}
+      {error && <p style={appStyle}> {error} </p>}
+      {showButton && (<Button morePictures={addPage} />)}
+      {showModal && <Modal
+        image={bigImage}
+        onClose={closeModal}
+      />}
 
+    </>
+  );
 
-  render() {
-
-    const { status, error, images, showButton, showModal, bigImage } = this.state;
-    return (
-      <div >
-        <Searchbar onSearch={this.handleSubmit} />
-        {status === 'pending' && <Loader />}
-        {status === 'resolved' && (<ImageGallery pictures={images} onOpenModal={this.openModal} />)}
-        {status === 'rejected' && <p style={appStyle}>{error}</p>}
-        {showButton && (<Button morePictures={this.addPage} />)}
-        {showModal &&
-          <Modal
-            image={bigImage}
-            onClose={this.closeModal}
-          />}
-
-      </div >
-    );
-  }
 };
 
 
 
 
 const appStyle = {
-  //   height: '100vh',
-  //   display: 'flex',
-  //   flexDirection: 'column',
-  //   justifyContent: 'center',
-  //   alignItems: 'center',
   fontSize: 30,
   textAlign: 'center',
-  //   color: '#010101'
 }
 
