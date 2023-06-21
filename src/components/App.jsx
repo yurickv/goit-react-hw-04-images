@@ -4,7 +4,7 @@ import { Loader } from './Loader/LoaderSpiner'
 import { getItems } from './Api/Api'
 import { ImageGallery } from './ImageGallery/ImageGallery'
 import { Button } from './LoadMoreBtn/LoadMoreBtn'
-import Modal from './Modal/ModalWindow'
+import { Modal } from './Modal/ModalWindow'
 
 export const App = () => {
 
@@ -88,6 +88,22 @@ export const App = () => {
   };
 
   // Закриття модального вікна
+  useEffect(() => {
+    const handleKeyDown = event => {
+      if (event.code === 'Escape') {
+        setBigImage(null);
+        setShowModal(false);
+        document.body.style.overflow = 'auto';
+      };
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+  }, []);
+
   const closeModal = () => {
     setBigImage(null);
     setShowModal(false);
