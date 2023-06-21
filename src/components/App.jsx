@@ -20,14 +20,13 @@ export const App = () => {
   const abortController = useRef(null);
 
   // Записує значення пошуку в state.search
-  const handleSubmit = (newSearch) => {
-    setSearch(newSearch.search);
+  const handleSubmit = ({ search }) => {
+    setSearch(`${Date.now()}/${search}`);
     setPage(1);
     setImages([]);
     setShowButton(false);
     setError(null);
   };
-
 
 
   // Робить пошуковий запит на сервер, дозавантажує наступні фото
@@ -53,7 +52,7 @@ export const App = () => {
           : setImages(previosState => [...previosState, ...hits]);
 
         if (!hits.length) {
-          setError(`Зображення ${search} відсутні`);
+          setError(`Зображення ${search.slice(search.indexOf('/') + 1)} відсутні`);
           return;
         };
 
